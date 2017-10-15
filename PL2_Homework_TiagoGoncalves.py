@@ -16,7 +16,6 @@ from sklearn.metrics import accuracy_score
 from sklearn.datasets import load_diabetes
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
-import matplotlib.pyplot as plt
 
 #6.1 - Graded Homework: Training and Testing data.
 
@@ -100,6 +99,53 @@ print('Coefficients: \n', nmodel.coef_)
 ##############################################################################
 #6.3 Ungraded Homework - k neighboors
 from sklearn import datasets
+from collections import Counter
+
+def distance(x,y):
+    return np.linalg.norm(x-y)
+
+#Implement from scratch
+#Creating the train block of KNN Classifier
+
+def knntrain(Xknn_train, yknn_train):
+    return
+
+#Creating the predict block of KNN Classifier
+
+def predictknn(Xknn_train, yknn_train, Xknn_test, k):
+    knndistances = []
+    knntargets = []
+    
+    for i in range(len(Xknn_train)):
+        #Compute Euclidean Distance
+        d = np.sqrt(np.sum(np.square(Xknn_test - Xknn_train[i, :])))
+        #Add it to list of distances
+        knndistances.append([d, i])
+    
+    #Sort the list
+    knndistances = sorted(knndistances)
+    
+    #Make a list to have k neighbor's targets
+    for i in range (k):
+        kindex = knndistances[i][1]
+        knntargets.append(yknn_train[kindex])
+        
+    #Get and return most common knntarget
+    return Counter(knntargets).most_common(1)[0][0]
+
+# Define the KNN Fucntion that will loop through everything and perform the test using KNN Classifier
+
+def KNN(Xknn_train, yknn_train, xknn_test, knnpreds, k):
+    #Train on the input data
+    knntrain(Xknn_train, yknn_train)
+    
+    #Then, we loop through all the observations
+    for i in range(len(xknn_test)):
+        knnpreds.append(predictknn(Xknn_train, yknn_train, xknn_test[i::], k))
+
+
+#Testing the KNN Algorithm
+#With a simple array
 iris = datasets.load_iris()
 
 subset = np.logical_or(iris.target == 0, iris.target == 1)
@@ -107,13 +153,47 @@ subset = np.logical_or(iris.target == 0, iris.target == 1)
 X = iris.data[subset]
 y = iris.target[subset]
 
-def distance(x,y):
-    return np.linalg.norm(x-y)
-
-
 xnew = np.array([3.5, 2.5, 2.5, 0.75])
 
-if distance(xnew, X[:4])<3:
-    print("0")
-else:
-    print("1")
+#Save obtained predictions
+knnpreds = []
+
+#KNN with k=3
+KNN(X, y, xnew, knnpreds, 3)
+
+#Transform the list into an array
+knnpreds = np.asarray(knnpreds)
+
+#Print predictions
+print("Predicted values are: \n", knnpreds)
+
+#With a test split
+Xknn_train, Xknn_test, yknn_train, yknn_test = train_test_split(X, y, test_size=0.30, random_state=42)
+
+kpreds = []
+KNN(X, y, xnew, kpreds, 3)
+
+kpreds = np.array(kpreds)
+
+#Print predictions
+print("Predicted values are: \n", kpreds)
+    
+#With sklearn library
+# loading library
+from sklearn.neighbors import KNeighborsClassifier
+
+#Test Split
+Xknn_train, Xknn_test, yknn_train, yknn_test = train_test_split(X, y, test_size=0.30, random_state=42)
+
+#KNN with k=3
+knn = KNeighborsClassifier(n_neighbors=3)
+
+#Fitting the model
+knn.fit(Xknn_train, yknn_train)
+
+#Predict the response
+pred = knn.predict(Xknn_test)
+print("Predicted values are: \n", pred)
+
+#Evaluate accuracy
+print("Accuracy for KNN is: \n", accuracy_score(pred, yknn_test))
