@@ -2,7 +2,7 @@
 """
 Created on Thu Oct 12 15:21:38 2017
 
-@author: tiago
+@author: Tiago Filipe Sousa Gonçalves DACO Student nºup201607753 FEUP
 """
 
 #Homework PL2 Tiago Gonçalves
@@ -16,6 +16,9 @@ from sklearn.metrics import accuracy_score
 from sklearn.datasets import load_diabetes
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn import datasets
+from collections import Counter
+from sklearn.neighbors import KNeighborsClassifier
 
 #6.1 - Graded Homework: Training and Testing data.
 
@@ -98,8 +101,7 @@ print('Coefficients: \n', nmodel.coef_)
 
 ##############################################################################
 #6.3 Ungraded Homework - k neighboors
-from sklearn import datasets
-from collections import Counter
+#Functions
 
 def distance(x,y):
     return np.linalg.norm(x-y)
@@ -113,38 +115,25 @@ def knntrain(Xknn_train, yknn_train):
 #Creating the predict block of KNN Classifier
 
 def predictknn(Xknn_train, yknn_train, Xknn_test, k):
-    knndistances = []
-    knntargets = []
+    knndistances = np.zeros((Xknn_train.shape[0],2))
     
-    for i in range(len(Xknn_train)):
-        #Compute Euclidean Distance
-        d = np.sqrt(np.sum(np.square(Xknn_test - Xknn_train[i, :])))
+    for i in range(Xknn_train.shape[0]):
+        #Compute Euclidean Distance: this can be done with the method indicated for the d variable, or with distance funtion provided by Professor.
+        #d = np.sqrt(np.sum(np.square(Xknn_test - Xknn_train[i, :])))
+        knndistances[i][0]=distance(Xknn_test, Xknn_train[i,:])
         #Add it to list of distances
-        knndistances.append([d, i])
+        knndistances[i][1] = i
     
-    #Sort the list
-    knndistances = sorted(knndistances)
+    #Sort the list, we can use the method sorted() or the other one below:
+    #knndistances = sorted(knndistances)
+    #We then obtain the corresponding indexes for the predictions:
+    kindex = knndistances[:,0].argsort()
+    CLabel = yknn_train[kindex[0:k]]
     
-    #Make a list to have k neighbor's targets
-    for i in range (k):
-        kindex = knndistances[i][1]
-        knntargets.append(yknn_train[kindex])
-        
     #Get and return most common knntarget
-    return Counter(knntargets).most_common(1)[0][0]
-
-# Define the KNN Fucntion that will loop through everything and perform the test using KNN Classifier
-
-def KNN(Xknn_train, yknn_train, xknn_test, knnpreds, k):
-    #Train on the input data
-    knntrain(Xknn_train, yknn_train)
+    return Counter(CLabel).most_common(1)[0][0]
     
-    #Then, we loop through all the observations
-    for i in range(len(xknn_test)):
-        knnpreds.append(predictknn(Xknn_train, yknn_train, xknn_test[i::], k))
-
-
-#Testing the KNN Algorithm
+#Testing the KNN Algorithm, k=3
 #With a simple array
 iris = datasets.load_iris()
 
@@ -153,35 +142,34 @@ subset = np.logical_or(iris.target == 0, iris.target == 1)
 X = iris.data[subset]
 y = iris.target[subset]
 
+k = 3
+
 xnew = np.array([3.5, 2.5, 2.5, 0.75])
 
-#Save obtained predictions
-knnpreds = []
+#Print predictions for xnew array:
+print("Predicted values for xnew are: \n", predictknn(X, y, xnew, k))
 
-#KNN with k=3
-KNN(X, y, xnew, knnpreds, 3)
-
-#Transform the list into an array
-knnpreds = np.asarray(knnpreds)
-
-#Print predictions
-print("Predicted values are: \n", knnpreds)
 
 #With a test split
 Xknn_train, Xknn_test, yknn_train, yknn_test = train_test_split(X, y, test_size=0.30, random_state=42)
 
+#Create an empty list to append new values
 kpreds = []
-KNN(X, y, xnew, kpreds, 3)
 
+#Then, we loop through all the observations obtained by the predictknn function:
+for i in range(Xknn_test.shape[0]):
+    kpreds.append(predictknn(Xknn_train, yknn_train, Xknn_test[i,:], k))
+
+#Convert into numpy array:
 kpreds = np.array(kpreds)
 
 #Print predictions
-print("Predicted values are: \n", kpreds)
+print("Predicted values for implementation by scratch are: \n", kpreds)
+
+#Evaluate Accuracy:
+print("Accuracy for KNN by scratch is: \n", accuracy_score(kpreds, yknn_test))
     
 #With sklearn library
-# loading library
-from sklearn.neighbors import KNeighborsClassifier
-
 #Test Split
 Xknn_train, Xknn_test, yknn_train, yknn_test = train_test_split(X, y, test_size=0.30, random_state=42)
 
@@ -193,7 +181,7 @@ knn.fit(Xknn_train, yknn_train)
 
 #Predict the response
 pred = knn.predict(Xknn_test)
-print("Predicted values are: \n", pred)
+print("Predicted values for sklearn are: \n", pred)
 
 #Evaluate accuracy
 print("Accuracy for KNN is: \n", accuracy_score(pred, yknn_test))
