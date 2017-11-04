@@ -18,7 +18,6 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
 from sklearn import svm
 from sklearn import tree
-from sklearn.svm import SVC
 from sklearn import metrics
 import matplotlib.pyplot as plt
 
@@ -47,14 +46,14 @@ clf = GaussianNB()
 clf.fit(X_train, y_train)
 test = clf.predict(X_test)
 
-
-accuracy_naivebayes = accuracy_score(test, y_test)
-print('Accuracy of Naive Bayes is: ', accuracy_naivebayes)
-
 #With Cross Validation
 print ('Using Cross Validation')
 cv_NB_scores = cross_val_score(clf, X_train, y_train, cv=10)
 print ('Mean accuracy across folds: ', np.mean(cv_NB_scores))
+
+#Do a final performance test
+accuracy_naivebayes = accuracy_score(test, y_test)
+print('Final Accuracy of Naive Bayes is: ', accuracy_naivebayes)
 print()
 ###############################################################################
 #Logistic Regression
@@ -119,12 +118,8 @@ stds = clf_svm.cv_results_['std_test_score']
 for mean, std, params in zip(means, stds, clf_svm.cv_results_['params']):
     print("%0.3f (+/-%0.03f) for %r"
           % (mean, std * 2, params))
+svm_accuracy = clf_svm.score(X_test, y_test)
 print('SVM Accuracy is:', clf_svm.score(X_test, y_test))
-print()
-#With Cross Validation
-print ('Using Cross Validation')
-cv_SVM_scores = cross_val_score(clf_svm, X_train, y_train, cv=10)
-print ('Mean accuracy across folds: ', np.mean(cv_SVM_scores))
 print()
 ###############################################################################
 #Decision Trees
@@ -150,7 +145,6 @@ for mean, std, params in zip(means, stds, clfd_tree.cv_results_['params']):
     print("%0.3f (+/-%0.03f) for %r"
           % (mean, std * 2, params))
 print('Decision Tree Accuracy is:', clfd_tree.score(X_test, y_test))
-print()
 X = X_train
 Y = y_train
 clf_dtree = tree.DecisionTreeClassifier()
@@ -158,14 +152,8 @@ clf_dtree = clf_dtree.fit(X, Y)
 d_tree_pr = clf_dtree.predict(X_test)
 dt_accuracy = clf_dtree.score(X_test, y_test)
 print('Accuracy for Decision Trees is:', dt_accuracy)
-
-#With Cross Validation
-print ('Using Cross Validation')
-cv_DT_scores = cross_val_score(clf_dtree, X_train, y_train, cv=10)
-print ('Mean accuracy across folds: ', np.mean(cv_DT_scores))
 print()
-
-#Decision Trees with Regression
+#Decision Trees with Regression (Extra)
 #I didn't perform hyperparameter tuning on this one
 print('Decision Trees with Regression')
 clf_dtr = tree.DecisionTreeRegressor()
@@ -173,59 +161,75 @@ clf_dtr = clf_dtr.fit(X, Y)
 dtr_pr = clf_dtr.predict(X_test)
 dtr_accuracy = clf_dtr.score(X_test, y_test)
 print('Accuracy for Decision Trees Regression is:', dtr_accuracy)
-
-#With Cross Validation
-print ('Using Cross Validation')
-cv_DTR_scores = cross_val_score(clf_dtr, X_train, y_train, cv=10)
-print ('Mean accuracy across folds: ', np.mean(cv_DTR_scores))
 print()
-
 ###############################################################################
-#Getting more metrics on the best classifier, which was SVM
-#Doing another performance with SVM
-print('SVM The Best Classifier')
-SVM_clf = SVC(C=1.0, gamma=0.1, probability=True, kernel='rbf')
-SVM_clf = SVM_clf.fit(X_train, y_train) 
-svm_pred = SVM_clf.predict(X_test)
-#Compute accuracy for this SVM
-svm_accuracy = SVM_clf.score(X_test, y_test)
-print ('Accuracy for this SVM is:', svm_accuracy)
+#Getting more metrics on the best classifier
+accuracy_array = np.array([accuracy_naivebayes, faccuracy_LR, kaccuracy, svm_accuracy, dt_accuracy, dtr_accuracy])
+best_accuracy = np.amax(accuracy_array)
+
+#Evaluate accuracies and associate them with the best classifier (bestclf)
+if best_accuracy == accuracy_naivebayes:
+    bestclf = clf
+    print('Best Classifier is NaiveBayes!')
+elif best_accuracy == faccuracy_LR:
+    bestclf = clf_LR
+    print('Best Classifier is Logistic Regression!')
+elif best_accuracy == kaccuracy:
+    bestclf = knn
+    print('Best Classifier is k-NN!')
+elif best_accuracy == svm_accuracy:
+    bestclf = clf_svm
+    print('Best Classifier is SVM!')
+elif best_accuracy == dt_accuracy:
+    bestclf = clf_dtree
+    print('Best Classifier is Decision Trees!')
+elif best_accuracy == dtr_accuracy:
+    bestclf = clf_dtr
+    print('Best Classifier is Decision Trees with Regression!')
+    
+#Performing more measurements on metrics in bestclf
+print('The Best Classifier')
+bestclf = bestclf.fit(X_train, y_train) 
+bestclf_pred = bestclf.predict(X_test)
+#Compute accuracy for this best classifier
+bestclf_accuracy = bestclf.score(X_test, y_test)
+print ('Accuracy for this Classifier is:', bestclf_accuracy)
 #Confusion Matrix
-svm_cm = metrics.confusion_matrix(y_test, svm_pred)
+bestclf_cm = metrics.confusion_matrix(y_test, bestclf_pred)
 print('Confusion Matrix is:')
-print(svm_cm)
-tn, fp, fn, tp = svm_cm.ravel()
+print(bestclf_cm)
+tn, fp, fn, tp = bestclf_cm.ravel()
 print('True Negatives:', tn)
 print('False Positives:', fp)
 print('False Negatives:', fn)
 print('True Positives:', tp)
 #Sensitivity
-svm_sens = metrics.recall_score(y_test, svm_pred)
-print('Sensitivity is:', svm_sens)
+bestclf_sens = metrics.recall_score(y_test, bestclf_pred)
+print('Sensitivity is:', bestclf_sens)
 #Specificity
-svm_spec = tn / float(tn+fp)
-print('Specificity is:', svm_spec)
+bestclf_spec = tn / float(tn+fp)
+print('Specificity is:', bestclf_spec)
 #Precision
-svm_prc = metrics.precision_score(y_test, svm_pred)
-print('Precision is:', svm_prc)
+bestclf_prc = metrics.precision_score(y_test, bestclf_pred)
+print('Precision is:', bestclf_prc)
 #F1 - Score
-svm_f1 = metrics.f1_score(y_test, svm_pred)
-print('F1 Score is:', svm_f1)
+bestclf_f1 = metrics.f1_score(y_test, bestclf_pred)
+print('F1 Score is:', bestclf_f1)
 #Complete report
 print('Complete Report:')
-print(metrics.classification_report(y_test, svm_pred, target_names=['Malignant', 'Benign']))
+print(metrics.classification_report(y_test, bestclf_pred, target_names=['Malignant', 'Benign']))
 
 #Decision Threshold and ROC Curve
 #Store predicted probabilities for class 1 - Malignant
-svm_pred_proba = SVM_clf.predict_proba(X_test)[:,0]
+bestclf_pred_proba = bestclf.predict_proba(X_test)[:,0]
 #Probability Histogram
-plt.hist(svm_pred_proba, bins=8)
+plt.hist(bestclf_pred_proba, bins=8)
 # x-axis limit from 0 to 1
 plt.xlim(0,1)
 plt.title('Histogram of predicted probabilities');
 plt.xlabel('Predicted probability of breast cancer');
 plt.ylabel('Frequency');
-fpr, tpr, thresholds = metrics.roc_curve(y_test, svm_pred_proba)
+fpr, tpr, thresholds = metrics.roc_curve(y_test, bestclf_pred_proba)
 
 #Plot ROC Curver
 plt.figure(figsize=(6, 6))
@@ -239,9 +243,9 @@ plt.grid(True)
 
 #Area Under ROC Curve
 print('Area Under ROC Curve is:')
-print(metrics.roc_auc_score(y_test, svm_pred_proba))
+print(metrics.roc_auc_score(y_test, bestclf_pred_proba))
 
-
+#Function created by Professor
 #Calculate precision at the default threshold decision
 # define a function that accepts a threshold and prints sensitivity and specificity
 def evaluate_threshold(threshold):
